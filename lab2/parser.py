@@ -9,7 +9,7 @@ class Mparser(Parser):
     precedence = (
         ("nonassoc", IFX),
         ("nonassoc", ELSE),
-        # ("nonassoc", "=", ADDASSIGN, SUBASSIGN, MULASSIGN, DIVASSIGN),
+        ("nonassoc", "=", ADDASSIGN, SUBASSIGN, MULASSIGN, DIVASSIGN),
         ("nonassoc", LT, GT, LE, GE, EQ, NE),
         ("left", "+", "-"),
         ("left", DOTADD, DOTSUB),
