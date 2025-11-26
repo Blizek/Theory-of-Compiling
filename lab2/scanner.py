@@ -2,7 +2,7 @@ from sly import Lexer
 
 
 class Scanner(Lexer):
-    tokens = {DOTADD, DOTSUB, DOTMUL, DOTDIV, TRANSPOSE,
+    tokens = {DOTADD, DOTSUB, DOTMUL, DOTDIV,
               ADDASSIGN, SUBASSIGN, MULASSIGN, DIVASSIGN,
               LT, GT, LE, GE, EQ, NE,
               IF, ELSE, FOR, WHILE, BREAK, CONTINUE, RETURN,
