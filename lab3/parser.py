@@ -133,7 +133,7 @@ class Mparser(Parser):
 
     @_('matrix_function_name "(" INTNUM ")"')
     def matrix_function(self, p):
-        return AST.MatrixFunction(p.matrix_function_name, p.INTNUM)
+        return AST.MatrixFunction(p.matrix_function_name, AST.IntNum(p.INTNUM))
 
     @_('EYE')
     def matrix_function_name(self, p):
