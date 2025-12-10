@@ -149,9 +149,6 @@ class TreePrinter:
                 s += "\n"
         return s
 
-
-
-    # wydzielic
     @addToClass(AST.MatrixFunction)
     def printTree(self, indent=0):
         s = "|  " * indent + self.name + "\n"
