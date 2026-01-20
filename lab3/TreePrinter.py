@@ -1,168 +1,128 @@
 from __future__ import print_function
 import AST
 
-
 def addToClass(cls):
     def decorator(func):
         setattr(cls, func.__name__, func)
         return func
     return decorator
 
+class Tree:
+    def __init__(self, label, children=None):
+        self.label = label
+        self.children = children if children is not None else []
+
+    def printTree(self, indent=0):
+        s = "|  " * indent + str(self.label) + "\n"
+        for child in self.children:
+            if isinstance(child, Tree):
+                s += child.printTree(indent + 1)
+            elif hasattr(child, 'toTree'):
+                 s += child.toTree().printTree(indent + 1)
+            else: 
+                 s += "|  " * (indent + 1) + str(child) + "\n"
+        return s
 
 class TreePrinter:
-    @addToClass(AST.Program)
+    @addToClass(AST.Node)
     def printTree(self, indent=0):
-        if self.instructions:
-            return self.instructions.printTree(indent)
-        return ""
+        return self.toTree().printTree(indent)
+
+    @addToClass(AST.Program)
+    def toTree(self):
+        return self.instructions.toTree()
 
     @addToClass(AST.Instructions)
-    def printTree(self, indent=0):
-        result = []
-        for instruction in self.instructions:
-            result.append(instruction.printTree(indent))
-        return "\n".join(result)
+    def toTree(self):
+        return Tree("PROGRAM", [instr.toTree() for instr in self.instructions])
 
     @addToClass(AST.BinExpr)
-    def printTree(self, indent=0):
-        s = "|  " * indent + self.op + "\n"
-        s += self.left.printTree(indent + 1) + "\n"
-        s += self.right.printTree(indent + 1)
-        return s
+    def toTree(self):
+        return Tree(self.op, [self.left.toTree(), self.right.toTree()])
 
     @addToClass(AST.RelExpr)
-    def printTree(self, indent=0):
-        s = "|  " * indent + self.op + "\n"
-        s += self.left.printTree(indent + 1) + "\n"
-        s += self.right.printTree(indent + 1)
-        return s
+    def toTree(self):
+        return Tree(self.op, [self.left.toTree(), self.right.toTree()])
 
     @addToClass(AST.Assignment)
-    def printTree(self, indent=0):
-        s = "|  " * indent + self.op + "\n"
-        s += self.left.printTree(indent + 1) + "\n"
-        s += self.right.printTree(indent + 1)
-        return s
+    def toTree(self):
+        return Tree(self.op, [self.left.toTree(), self.right.toTree()])
 
     @addToClass(AST.If)
-    def printTree(self, indent=0):
-        s = "|  " * indent + "IF\n"
-        s += self.condition.printTree(indent + 1) + "\n"
-        s += "|  " * indent + "THEN\n"
-        s += self.then_block.printTree(indent + 1)
+    def toTree(self):
+        children = [self.condition.toTree(), Tree("THEN", [self.then_block.toTree()])]
         if self.else_block:
-            s += "\n" + "|  " * indent + "ELSE\n"
-            s += self.else_block.printTree(indent + 1)
-        return s
+            children.append(Tree("ELSE", [self.else_block.toTree()]))
+        return Tree("IF", children)
 
     @addToClass(AST.While)
-    def printTree(self, indent=0):
-        s = "|  " * indent + "WHILE\n"
-        s += self.condition.printTree(indent + 1) + "\n"
-        s += self.body.printTree(indent + 1)
-        return s
+    def toTree(self):
+        return Tree("WHILE", [self.condition.toTree(), self.body.toTree()])
 
     @addToClass(AST.For)
-    def printTree(self, indent=0):
-        s = "|  " * indent + "FOR\n"
-        s += self.var.printTree(indent + 1) + "\n"
-        s += self.range.printTree(indent + 1) + "\n"
-        s += self.body.printTree(indent + 1)
-        return s
+    def toTree(self):
+        return Tree("FOR", [self.var.toTree(), self.range.toTree(), self.body.toTree()])
 
     @addToClass(AST.Range)
-    def printTree(self, indent=0):
-        s = "|  " * indent + "RANGE\n"
-        s += self.start.printTree(indent + 1) + "\n"
-        s += self.end.printTree(indent + 1)
-        return s
+    def toTree(self):
+        return Tree("RANGE", [self.start.toTree(), self.end.toTree()])
 
     @addToClass(AST.Break)
-    def printTree(self, indent=0):
-        return "|  " * indent + "BREAK"
+    def toTree(self):
+        return Tree("BREAK")
 
     @addToClass(AST.Continue)
-    def printTree(self, indent=0):
-        return "|  " * indent + "CONTINUE"
+    def toTree(self):
+        return Tree("CONTINUE")
 
     @addToClass(AST.Return)
-    def printTree(self, indent=0):
-        s = "|  " * indent + "RETURN\n"
-        s += self.expr.printTree(indent + 1)
-        return s
+    def toTree(self):
+        return Tree("RETURN", [self.expr.toTree()])
 
     @addToClass(AST.Print)
-    def printTree(self, indent=0):
-        s = "|  " * indent + "PRINT\n"
-        for i, val in enumerate(self.values):
-            s += val.printTree(indent + 1)
-            if i < len(self.values) - 1:
-                s += "\n"
-        return s
+    def toTree(self):
+        return Tree("PRINT", [val.toTree() for val in self.values])
 
     @addToClass(AST.IntNum)
-    def printTree(self, indent=0):
-        return "|  " * indent + str(self.value)
+    def toTree(self):
+        return Tree(self.value)
 
     @addToClass(AST.FloatNum)
-    def printTree(self, indent=0):
-        return "|  " * indent + str(self.value)
+    def toTree(self):
+        return Tree(self.value)
 
     @addToClass(AST.String)
-    def printTree(self, indent=0):
-        return "|  " * indent + '"' + self.value + '"'
+    def toTree(self):
+        return Tree(f'"{self.value}"')
 
     @addToClass(AST.Variable)
-    def printTree(self, indent=0):
-        return "|  " * indent + self.name
+    def toTree(self):
+        return Tree(self.name)
 
     @addToClass(AST.VectorElement)
-    def printTree(self, indent=0):
-        s = "|  " * indent + "REF\n"
-        s += "|  " * (indent + 1) + self.name + "\n"
-        s += "|  " * (indent + 1) + str(self.index)
-        return s
+    def toTree(self):
+        return Tree("REF", [Tree(self.name), Tree(self.index)])
 
     @addToClass(AST.MatrixElement)
-    def printTree(self, indent=0):
-        s = "|  " * indent + "REF\n"
-        s += "|  " * (indent + 1) + self.name + "\n"
-        s += "|  " * (indent + 1) + str(self.row) + "\n"
-        s += "|  " * (indent + 1) + str(self.col)
-        return s
+    def toTree(self):
+        return Tree("REF", [Tree(self.name), Tree(self.row), Tree(self.col)])
 
     @addToClass(AST.Matrix)
-    def printTree(self, indent=0):
-        s = "|  " * indent + "VECTOR\n"
-        for i, row in enumerate(self.rows):
-            s += row.printTree(indent + 1)
-            if i < len(self.rows) - 1:
-                s += "\n"
-        return s
+    def toTree(self):
+        return Tree("VECTOR", [row.toTree() for row in self.rows])
 
     @addToClass(AST.Vector)
-    def printTree(self, indent=0):
-        s = "|  " * indent + "VECTOR\n"
-        for i, elem in enumerate(self.elements):
-            s += elem.printTree(indent + 1)
-            if i < len(self.elements) - 1:
-                s += "\n"
-        return s
+    def toTree(self):
+        return Tree("VECTOR", [elem.toTree() for elem in self.elements])
 
     @addToClass(AST.MatrixFunction)
-    def printTree(self, indent=0):
-        s = "|  " * indent + self.name + "\n"
-        s += self.size.printTree(indent + 1)
-        return s
+    def toTree(self):
+        return Tree(self.name, [self.size.toTree()])
 
     @addToClass(AST.UnaryMinus)
-    def printTree(self, indent=0):
-        s = "|  " * indent + "-\n"
-        s += self.expr.printTree(indent + 1)
-        return s
+    def toTree(self):
+        return Tree("-", [self.expr.toTree()])
 
     @addToClass(AST.Transposition)
-    def printTree(self, indent=0):
-        s = "|  " * indent + "TRANSPOSE\n"
-        s += self.expr.printTree(indent + 1)
-        return s
+    def toTree(self):
+        return Tree("TRANSPOSE", [self.expr.toTree()])
