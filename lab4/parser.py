@@ -169,13 +169,18 @@ class Mparser(Parser):
     def id_ref(self, p):
         return AST.TabRef(p[0], p.lineno)
 
-    @_('ID "[" id_int "," id_int "]"')
+    @_('ID "[" index_list "]"')
     def matrix_ref(self, p):
-        return AST.DoubleRef(p[0], p[2], p[4], p.lineno)
+        return AST.IndexRef(p[0], p[2], p.lineno)
 
-    @_('ID "[" id_int "]"')
-    def matrix_ref(self, p):
-        return AST.SingleRef(p[0], p[2], p.lineno)
+    @_('index_list "," id_int')
+    def index_list(self, p):
+        p[0].append(p[2])
+        return p[0]
+
+    @_('id_int')
+    def index_list(self, p):
+        return [p[0]]
 
     @_('ID "[" id_int ":" id_int "]"')
     def tab_ref(self, p):

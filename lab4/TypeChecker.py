@@ -267,6 +267,7 @@ class TypeChecker(NodeVisitor):
         elif isinstance(node.right.expression, AST.MatrixFuncs):
             var_type = "vector"
             size = node.right.expression.value
+            dimension = 2
             if size <= 0:
                 return
 
@@ -356,9 +357,9 @@ class TypeChecker(NodeVisitor):
     def visit_TabRef(self, node):
         self.visit(node.tab_ref)
 
-    def visit_DoubleRef(self, node):
-        self.visit(node.row)
-        self.visit(node.col)
+    def visit_IndexRef(self, node):
+        for index in node.index_list:
+            self.visit(index)
         vector = self.table.get(node.id)
 
         if not vector:
@@ -369,28 +370,17 @@ class TypeChecker(NodeVisitor):
             print(f"Błąd w linii {node.lineno}: zły typ zmiennej!")
             return
 
-        if node.row.value >= vector.size or node.col.value >= vector.size:
-            print(f"Błąd w linii {node.lineno}: zły wymiar macierzy!")
+        if len(node.index_list) > vector.dimension:
+            print(f"Błąd w linii {node.lineno}: za dużo indeksów jest!")
             return
 
-        return "int"
+        for index in node.index_list:
+            if index.value >= vector.size:
+                print(f"Błąd w linii {node.lineno}: zły wymiar macierzy!")
+                return
 
-    def visit_SingleRef(self, node):
-        self.visit(node.row)
-        vector = self.table.get(node.id)
-
-        if not vector:
-            print(f"Błąd w linii {node.lineno}: nie rozpoznano zmiennej `{node.id}`!")
-            return
-
-        if not isinstance(vector, VectorSymbol):
-            print(f"Błąd w linii {node.lineno}: zły typ zmiennej!")
-            return
-
-        if node.row.value >= vector.size:
-            print(f"Błąd w linii {node.lineno}: zły wymiar macierzy!")
-            return
-
+        if len(node.index_list) == vector.dimension:
+             return "int"
         return "vector"
 
     def visit_TabRefBoth(self, node):

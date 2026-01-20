@@ -165,18 +165,10 @@ class TabRef(Node):
         self.lineno = lineno
 
 
-class DoubleRef(Node):
-    def __init__(self, id, row, col, lineno):
+class IndexRef(Node):
+    def __init__(self, id, index_list, lineno):
         self.id = id
-        self.row = row
-        self.col = col
-        self.lineno = lineno
-
-
-class SingleRef(Node):
-    def __init__(self, id, row, lineno):
-        self.id = id
-        self.row = row
+        self.index_list = index_list
         self.lineno = lineno
 
 
