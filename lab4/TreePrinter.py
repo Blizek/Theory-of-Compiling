@@ -13,14 +13,18 @@ class Tree:
         self.children = children if children is not None else []
 
     def printTree(self, indent=0):
-        s = "|  " * indent + str(self.label) + "\n"
+        s = ""
+        if self.label is not None:
+             s += "|  " * indent + str(self.label) + "\n"
+
         for child in self.children:
+            child_indent = indent + 1 if self.label is not None else indent
             if isinstance(child, Tree):
-                s += child.printTree(indent + 1)
+                s += child.printTree(child_indent)
             elif hasattr(child, 'toTree'):
-                 s += child.toTree().printTree(indent + 1)
+                 s += child.toTree().printTree(child_indent)
             else: 
-                 s += "|  " * (indent + 1) + str(child) + "\n"
+                 s += "|  " * (child_indent) + str(child) + "\n"
         return s
 
 class TreePrinter:
@@ -34,7 +38,7 @@ class TreePrinter:
 
     @addToClass(AST.Instructions)
     def toTree(self):
-        return Tree("PROGRAM", [instr.toTree() for instr in self.instructions])
+        return Tree(None, [instr.toTree() for instr in self.instructions])
 
     @addToClass(AST.BinExpr)
     def toTree(self):
