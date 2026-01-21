@@ -18,7 +18,6 @@ sys.setrecursionlimit(10000)
 
 class Interpreter(object):
     def __init__(self):
-        # global memory
         self.memory_stack = MemoryStack(Memory("global_memory"))
 
     @on('node')
@@ -342,8 +341,7 @@ class Interpreter(object):
 
     @when(AST.String)
     def visit(self, node):
-        return node.value[1:-1]  # because of `""` at the beginning and end
-        # I'm not sure why it is like that, but it works
+        return node.value[1:-1]  
 
     @when(AST.Error)
     def visit(self, node):
