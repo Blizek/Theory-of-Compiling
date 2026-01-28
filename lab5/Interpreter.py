@@ -186,62 +186,92 @@ class Interpreter(object):
 
     @when(AST.ArithMatExpr)
     def visit(self, node):
+        # 1. Rekurencyjne odwiedzenie lewego i prawego poddrzewa, aby uzyskać wartości operandów
         left = self.visit(node.left)
         right = self.visit(node.right)
+        
+        # 2. Pobranie operatora i odpowiadającej mu funkcji z mapowania (np. dodawanie, odejmowanie)
         op = node.div_op
         func = operations[op]
+
+        # --- LOGIKA BROADCASTINGU (Dopasowanie wymiarów) ---
+        # Jeśli lewa strona jest wektorem, a prawa macierzą - rozszerzamy lewą stronę,
+        # by pasowała strukturą do macierzy (kopiowanie wartości wierszy).
         if not all(isinstance(el, list) for el in left) and all(isinstance(el, list) for el in right):
             left = [[l] * len(right[0]) for l in left]
+            
+        # Analogicznie: jeśli prawa strona jest "płaska", a lewa to macierz - rozszerzamy prawą.
         elif not all(isinstance(el, list) for el in right) and all(isinstance(el, list) for el in left):
             right = [[r] * len(left[0]) for r in right]
+
+        # --- OBSŁUGA MNOŻENIA (Specjalny przypadek operatora '.*') ---
         if op == '.*':
+            # Jeśli oba operandy są wektorami (listami 1D) - wykonaj mnożenie element po elemencie
             if not all(isinstance(el, list) for el in left) and not all(isinstance(el, list) for el in right):
                 return [l * r for l, r in zip(left, right)]
 
+            # Klasyczne mnożenie macierzy (Matrix Multiplication) dla struktur 2D
+            # Inicjalizacja macierzy wynikowej zerami o wymiarach [wiersze_lewej x kolumny_prawej]
             result = [[0. for _ in range(len(right[0]))] for _ in range(len(left))]
 
-            for i in range(len(left)):
-                for j in range(len(right[0])):
+            # Potrójna pętla - standardowy algorytm mnożenia macierzy: C[i][j] = Σ (A[i][k] * B[k][j])
+            for i in range(len(left)): # po wierszach lewej macierzy
+                for j in range(len(right[0])): # po kolumnach prawej macierzy
                     suma = 0
-
-                    for k in range(len(left[0])):
+                    for k in range(len(left[0])): # iloczyn skalarny wiersza i kolumny
                         suma += left[i][k] * right[k][j]
-
                     result[i][j] = suma
 
             return result
+            
+        # --- POZOSTAŁE OPERACJE (np. +, -, /) ---
         else:
+            # Dla wektorów: wykonaj operację element po elemencie
             if not all(isinstance(el, list) for el in left) and not all(isinstance(el, list) for el in right):
                 return [func(l, r) for l, r in zip(left, right)]
 
+            # Dla macierzy: wykonaj operację element po elemencie w strukturze 2D
             return [[func(l, r) for l, r in zip(lrow, rrow)] for lrow, rrow in zip(left, right)]
 
     @when(AST.DeclareExpr)
     def visit(self, node):
+        # --- PRZYPADEK 1: Przypisanie do zwykłej zmiennej (np. x = 5) ---
         if isinstance(node.left, AST.Variable):
             name = node.left.name
-            value = self.visit(node.right)
+            value = self.visit(node.right) # Obliczamy wartość wyrażenia po prawej stronie
 
+            # Sprawdzamy, czy zmienna już istnieje w pamięci
             if self.memory_stack.get(name) is None:
-                self.memory_stack.insert(name, value)
+                self.memory_stack.insert(name, value) # Nowa zmienna -> dodaj do stosu
             else:
-                self.memory_stack.set(name, value)
+                self.memory_stack.set(name, value)    # Istniejąca zmienna -> aktualizuj wartość
+                
+        # --- PRZYPADEK 2: Przypisanie do elementu macierzy lub jej wycinka (np. A[1,2] = 5 lub A[1:5] = 0) ---
         else:
+            # Zakładamy, że node.left to operacja indeksowania, która zwraca nazwę i listę indeksów
             name, indices = self.visit(node.left)
-            matrix = self.memory_stack.get(name)
-            value = self.visit(node.right)
+            matrix = self.memory_stack.get(name) # Pobieramy macierz z pamięci
+            value = self.visit(node.right)       # Obliczamy wartość do przypisania
 
+            # A. OBSŁUGA ZAKRESU (Slicing) - np. A[1:5] = value
+            # Logika dla 3 elementów w 'indices' sugeruje konstrukcję [początek, koniec, flaga_zakresu]
             if len(indices) == 3:
                 begin = 0 if indices[0] is None else indices[0]
                 end = len(matrix) if indices[1] is None else indices[1]
 
+                # Wypełniamy wybrany zakres wierszy nową wartością
                 for i in range(begin, end):
                     matrix[i] = value
+                    
+            # B. PRZYPISANIE DO KONKRETNEJ KOMÓRKI 2D - np. A[i, j] = value
             elif len(indices) == 2:
                 matrix[indices[0]][indices[1]] = value
+                
+            # C. PRZYPISANIE DO KONKRETNEGO WIERSZA / ELEMENTU 1D - np. A[i] = value
             else:
                 matrix[indices[0]] = value
 
+            # Zaktualizuj zmodyfikowaną macierz w pamięci
             self.memory_stack.set(name, matrix)
 
     @when(AST.UpdateExpr)
@@ -328,12 +358,18 @@ class Interpreter(object):
 
     @when(AST.MatrixFuncs)
     def visit(self, node):
-        if node.fun == "zeros":
-            return [[0. for _ in range(node.value)] for _ in range(node.value)]
-        elif node.fun == "ones":
-            return [[1. for _ in range(node.value)] for _ in range(node.value)]
-        elif node.fun == "eye":
-            return [[0. if i != j else 1. for i in range(node.value)] for j in range(node.value)]
+        generators = {
+            "zeros": lambda n: [[0. for _ in range(n)] for _ in range(n)],
+            "ones":  lambda n: [[1. for _ in range(n)] for _ in range(n)],
+            "eye":   lambda n: [[1. if i == j else 0. for j in range(n)] for i in range(n)]
+        }
+
+        matrix_func = generators.get(node.fun)
+
+        if matrix_func:
+            return matrix_func(node.value)
+        
+        raise ValueError(f"Nieznana funkcja macierzowa: {node.fun}")
 
     @when(AST.FloatNum)
     def visit(self, node):
