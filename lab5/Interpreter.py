@@ -204,7 +204,6 @@ class Interpreter(object):
         elif not all(isinstance(el, list) for el in right) and all(isinstance(el, list) for el in left):
             right = [[r] * len(left[0]) for r in right]
 
-        # --- OBSŁUGA MNOŻENIA (Specjalny przypadek operatora '.*') ---
         if op == '.*':
             # Jeśli oba operandy są wektorami (listami 1D) - wykonaj mnożenie element po elemencie
             if not all(isinstance(el, list) for el in left) and not all(isinstance(el, list) for el in right):
@@ -224,7 +223,6 @@ class Interpreter(object):
 
             return result
             
-        # --- POZOSTAŁE OPERACJE (np. +, -, /) ---
         else:
             # Dla wektorów: wykonaj operację element po elemencie
             if not all(isinstance(el, list) for el in left) and not all(isinstance(el, list) for el in right):
@@ -235,7 +233,7 @@ class Interpreter(object):
 
     @when(AST.DeclareExpr)
     def visit(self, node):
-        # --- PRZYPADEK 1: Przypisanie do zwykłej zmiennej (np. x = 5) ---
+        #  Przypisanie do zwykłej zmiennej (np. x = 5)
         if isinstance(node.left, AST.Variable):
             name = node.left.name
             value = self.visit(node.right) # Obliczamy wartość wyrażenia po prawej stronie
@@ -246,14 +244,13 @@ class Interpreter(object):
             else:
                 self.memory_stack.set(name, value)    # Istniejąca zmienna -> aktualizuj wartość
                 
-        # --- PRZYPADEK 2: Przypisanie do elementu macierzy lub jej wycinka (np. A[1,2] = 5 lub A[1:5] = 0) ---
+        # Przypisanie do elementu macierzy lub jej wycinka (np. A[1,2] = 5 lub A[1:5] = 0) 
         else:
             # Zakładamy, że node.left to operacja indeksowania, która zwraca nazwę i listę indeksów
             name, indices = self.visit(node.left)
             matrix = self.memory_stack.get(name) # Pobieramy macierz z pamięci
             value = self.visit(node.right)       # Obliczamy wartość do przypisania
 
-            # A. OBSŁUGA ZAKRESU (Slicing) - np. A[1:5] = value
             # Logika dla 3 elementów w 'indices' sugeruje konstrukcję [początek, koniec, flaga_zakresu]
             if len(indices) == 3:
                 begin = 0 if indices[0] is None else indices[0]
@@ -263,11 +260,11 @@ class Interpreter(object):
                 for i in range(begin, end):
                     matrix[i] = value
                     
-            # B. PRZYPISANIE DO KONKRETNEJ KOMÓRKI 2D - np. A[i, j] = value
+            # PRZYPISANIE DO KONKRETNEJ KOMÓRKI 2D - np. A[i, j] = value
             elif len(indices) == 2:
                 matrix[indices[0]][indices[1]] = value
                 
-            # C. PRZYPISANIE DO KONKRETNEGO WIERSZA / ELEMENTU 1D - np. A[i] = value
+            # PRZYPISANIE DO KONKRETNEGO WIERSZA / ELEMENTU 1D - np. A[i] = value
             else:
                 matrix[indices[0]] = value
 
